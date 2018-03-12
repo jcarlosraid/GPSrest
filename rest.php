@@ -1,24 +1,25 @@
 <?php
 set_time_limit(1800); 
 ini_set('memory_limit','200M');
-include('config.php');
+include('Config.php');
 include('Cx.php');
 $link=Conectarse(); //mysql
 
 function VehiculosAutorizados($link){
-    include('config.php');
+    include('Config.php');
     $sqlVehAut="select t1.imei,t1.odometer,t1.plate_number,t3.driver_id,t3.driver_name,t3.driver_idn,t1.loc_valid from 
                                         gs_user_objects t2
                                         inner join gs_objects as t1 on t2.imei=t1.imei
                                         inner join gs_user_object_drivers as t3 on t3.driver_id=t2.driver_id
-                                        where vin='".$usuario_vin."'
-                                        group by t1.imei,t1.odometer,t1.plate_number,t3.driver_id,t3.driver_name,t3.driver_idn,t1.loc_valid";
+                                        where vin='siderperu'
+                                        group by t1.imei,t1.odometer,t1.plate_number,t1.loc_valid";
+    //echo $sqlVehAut;
     $Result = mysqli_query($link,$sqlVehAut);
     return $Result;
 }
 
 function LecturasGPS($link,$imei,$placa,$estado_registro,$odometro,$transportista){
-    include('config.php');
+    include('Config.php');
     $sqlLectGPS="SELECT * FROM ".$nombre_tabla.$imei." where dt_tracker>='".$fecha_inicio."' and dt_tracker not in (select env.dt_tracker FROM gps_enviado env where env.imei=".$imei." and env.status in ('1','4')) order by dt_tracker asc limit 1";
     //echo $sqlLectGPS;
     //echo '</br></br>';
@@ -58,7 +59,7 @@ function LecturasGPS($link,$imei,$placa,$estado_registro,$odometro,$transportist
 }
 
 function rest($data){
-    include('config.php');
+    include('Config.php');
     // configuracion de cURL
     $ch = curl_init($url_envio);
     curl_setopt_array($ch, array(
@@ -123,6 +124,7 @@ while ($Items = $VA->fetch_object()) {
             
             print_r($resp_curl['RespuestaServicioWeb']['RespuestaOperacion']['ResultadoTransaccion']);
             //echo "estado de envio: ".$estado_envio;
+            echo "</br>";
 
         } else {
             echo 'no hay nada que enviar ptm';
