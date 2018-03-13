@@ -20,36 +20,44 @@ function VehiculosAutorizados($link){
 
 function LecturasGPS($link,$imei,$placa,$estado_registro,$odometro,$transportista){
     include('Config.php');
-    $sqlLectGPS="SELECT * FROM ".$nombre_tabla.$imei." where dt_tracker>='".$fecha_inicio."' and dt_tracker not in (select env.dt_tracker FROM gps_enviado env where env.imei=".$imei." and env.status in ('1','4')) order by dt_tracker asc limit 1";
+    $sqlLectGPS="SELECT * FROM ".$nombre_tabla.$imei." where dt_tracker>='".$fecha_inicio."' and dt_tracker not in (select env.dt_tracker FROM gps_enviado env where env.imei=".$imei." and env.status in ('1','4')) order by dt_tracker asc limit ".$nro_envios;
     //echo $sqlLectGPS;
     //echo '</br></br>';
     $datosGPS = mysqli_query($link,$sqlLectGPS);
 
-    $Items = $datosGPS->fetch_object();
+    //echo $datosGPS->num_rows.'</br>';
 
-    if (count($Items) > 0) {
-        //echo 'hay datos';
+    if ($datosGPS->num_rows != 0) {
 
         $dataEnviar = array(
         'posicion' => array()
         );
 
-        $dataEnviar['posicion']['patente']=$placa;
-        $dataEnviar['posicion']['fecha_hora']=$Items->dt_tracker;
-        $dataEnviar['posicion']['latitud']=$Items->lat;
-        $dataEnviar['posicion']['longitud']=$Items->lng;
-        $dataEnviar['posicion']['direccion']=$Items->angle;
-        $dataEnviar['posicion']['velocidad']=$Items->speed;
-        $dataEnviar['posicion']['estado_registro']=$estado_registro;
-        $dataEnviar['posicion']['estado_ignicion']='1';
-        $dataEnviar['posicion']['numero_evento']='45';
-        $dataEnviar['posicion']['odometro']=$odometro;
-        $dataEnviar['posicion']['transportista']=$transportista;
+        $arrayT = array();
+
+        $a=0;
+
+        while ($Items = $datosGPS->fetch_object()) {
+            $dataEnviar['posicion'][$a]['patente']=$placa;
+            $dataEnviar['posicion'][$a]['fecha_hora']=$Items->dt_tracker;
+            $dataEnviar['posicion'][$a]['latitud']=$Items->lat;
+            $dataEnviar['posicion'][$a]['longitud']=$Items->lng;
+            $dataEnviar['posicion'][$a]['direccion']=$Items->angle;
+            $dataEnviar['posicion'][$a]['velocidad']=$Items->speed;
+            $dataEnviar['posicion'][$a]['estado_registro']=$estado_registro;
+            $dataEnviar['posicion'][$a]['estado_ignicion']='1';
+            $dataEnviar['posicion'][$a]['numero_evento']='45';
+            $dataEnviar['posicion'][$a]['odometro']=$odometro;
+            $dataEnviar['posicion'][$a]['transportista']=$transportista;
+            $arrayT= array_merge($arrayT,$dataEnviar);
+            $a++;
+        }
+
+        //print_r($dataEnviar);
 
         return $dataEnviar;
 
     } else {
-        //echo 'no hay nada q enviar';
 
         return null;
     }
@@ -94,43 +102,62 @@ function InsertarEnviados($link,$imei,$fecha,$status){
 }
 
 $VA = VehiculosAutorizados($link);
-//print_r($VA);
-while ($Items = $VA->fetch_object()) {
-    for ($i=0; $i < $nro_envios ; $i++) { 
+$b=0;
+while ($Items = $VA->fetch_object()) { 
         
         $data = LecturasGPS($link,$Items->imei,$Items->plate_number,$Items->loc_valid,$Items->odometer,$Items->driver_name);
         //print_r($data);
         //echo '</br></br>';
         if ($data != null) {
-            //echo 'hay algo por hacer';
 
-            $fecha = $data['posicion']['fecha_hora'];
-            //print_r(json_encode($data));
             $resp_curl = rest($data);
-            // Print the date from the response
-            $estado_envio = $resp_curl['RespuestaServicioWeb']['RespuestaOperacion']['ResultadoTransaccion']['Estado'];
 
-            if (($estado_envio==1) or ($estado_envio==4)) {
-                $resp = InsertarEnviados($link,$Items->imei,$fecha,$estado_envio);
-                if ($resp == TRUE) {
-                    //echo 'grabado correctamente';
-                } else {
-                    echo 'fallo en la grabacion';
+            $c=0;
+            $d=0;
+
+            foreach ($data as $lectura) {
+                foreach ($lectura as $lect2) {
+
+                    $fecha = $lect2['fecha_hora'];
+
+                    if (count($lectura) == 1) {
+                        $estado_envio = $resp_curl['RespuestaServicioWeb']['RespuestaOperacion']['ResultadoTransaccion']['Estado'];
+                        $detalle = $resp_curl['RespuestaServicioWeb']['RespuestaOperacion']['ResultadoTransaccion']['DetalleOperacion'];
+                    }
+                    else{
+                        $estado_envio = $resp_curl['RespuestaServicioWeb']['RespuestaOperacion'][$c]['ResultadoTransaccion']['Estado'];
+                        $detalle = $resp_curl['RespuestaServicioWeb']['RespuestaOperacion'][$c]['ResultadoTransaccion']['DetalleOperacion'];
+                    }
+                    
+
+                    if (($estado_envio==1) or ($estado_envio==4)) {
+                        $resp = InsertarEnviados($link,$Items->imei,$fecha,$estado_envio);
+                        if ($resp == TRUE) {
+                            $d++;
+                            //echo 'enviado '.$nro_envios.' registros correctamente...';
+                        } else {
+                            echo 'fallo en la grabacion';
+                        }
+                        
+                    } else {
+                        echo 'no se pudo procesar en el servidor de envio';
+                    }
+
+                    $c++;
                 }
                 
-            } else {
-                echo 'no se pudo procesar';
             }
-            
-            print_r($resp_curl['RespuestaServicioWeb']['RespuestaOperacion']['ResultadoTransaccion']);
-            //echo "estado de envio: ".$estado_envio;
-            echo "</br>";
 
-        } else {
-            echo 'no hay nada que enviar ptm';
+            print_r(array("mensaje" => 'enviado '.$d.' registros del '.$Items->plate_number.' hasta el '.$fecha.' correctamente...'));
+
+            //echo '<pre>';
+            //print_r($resp_curl);
+            //echo '</pre>';
+
+        } 
+
+        else {
+            print_r(array("mensaje" => 'no hay nada que enviar ptm...'));
         }
-        
-        
-
-    }
+    $b++;
 }

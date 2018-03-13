@@ -2,5 +2,5 @@
 cls
 :start
 php C:\xampp5\htdocs\GPSrest\rest.php
-timeout 30
+timeout 60
 goto start
