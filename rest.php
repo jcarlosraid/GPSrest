@@ -11,7 +11,7 @@ function VehiculosAutorizados($link){
                                         gs_user_objects t2
                                         inner join gs_objects as t1 on t2.imei=t1.imei
                                         inner join gs_user_object_drivers as t3 on t3.driver_id=t2.driver_id
-                                        where vin='siderperu'
+                                        where vin='".$usuario_vin."'
                                         group by t1.imei,t1.odometer,t1.plate_number,t1.loc_valid";
     //echo $sqlVehAut;
     $Result = mysqli_query($link,$sqlVehAut);
