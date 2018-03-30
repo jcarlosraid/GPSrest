@@ -34,22 +34,22 @@ function LecturasGPS($link,$imei,$placa,$estado_registro,$odometro,$transportist
         );
 
         $arrayT = array();
-
-        $a=0;
+        
+        $a      =0;
 
         while ($Items = $datosGPS->fetch_object()) {
-            $dataEnviar['posicion'][$a]['patente']=$placa;
-            $dataEnviar['posicion'][$a]['fecha_hora']=$Items->dt_tracker;
-            $dataEnviar['posicion'][$a]['latitud']=$Items->lat;
-            $dataEnviar['posicion'][$a]['longitud']=$Items->lng;
-            $dataEnviar['posicion'][$a]['direccion']=$Items->angle;
-            $dataEnviar['posicion'][$a]['velocidad']=$Items->speed;
-            $dataEnviar['posicion'][$a]['estado_registro']=$estado_registro;
-            $dataEnviar['posicion'][$a]['estado_ignicion']='1';
-            $dataEnviar['posicion'][$a]['numero_evento']='45';
-            $dataEnviar['posicion'][$a]['odometro']=$odometro;
-            $dataEnviar['posicion'][$a]['transportista']=$transportista;
-            $arrayT= array_merge($arrayT,$dataEnviar);
+            $dataEnviar['posicion'][$a]['patente']         =$placa;
+            $dataEnviar['posicion'][$a]['fecha_hora']      =$Items->dt_tracker;
+            $dataEnviar['posicion'][$a]['latitud']         =$Items->lat;
+            $dataEnviar['posicion'][$a]['longitud']        =$Items->lng;
+            $dataEnviar['posicion'][$a]['direccion']       =$Items->angle;
+            $dataEnviar['posicion'][$a]['velocidad']       =$Items->speed;
+            $dataEnviar['posicion'][$a]['estado_registro'] =$estado_registro;
+            $dataEnviar['posicion'][$a]['estado_ignicion'] ='1';
+            $dataEnviar['posicion'][$a]['numero_evento']   ='45';
+            $dataEnviar['posicion'][$a]['odometro']        =$odometro;
+            $dataEnviar['posicion'][$a]['transportista']   =$transportista;
+            $arrayT                                        = array_merge($arrayT,$dataEnviar);
             $a++;
         }
 
@@ -102,7 +102,7 @@ function InsertarEnviados($link,$imei,$fecha,$status){
 }
 
 $VA = VehiculosAutorizados($link);
-$b=0;
+$b  =0;
 while ($Items = $VA->fetch_object()) { 
         
         $data = LecturasGPS($link,$Items->imei,$Items->plate_number,$Items->loc_valid,$Items->odometer,$Items->driver_name);
@@ -161,3 +161,4 @@ while ($Items = $VA->fetch_object()) {
         }
     $b++;
 }
+?>
