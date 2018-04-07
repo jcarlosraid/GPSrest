@@ -7,7 +7,7 @@ $bd				="gps";/*"gs";*/
 $url_envio		="http://64.76.157.134:8280/Peru/Pruebas/InsertarPosicion";
 $token			="Bearer 52c3a0e5152eb679fed7630f4ae39e4c";
 $nombre_tabla	="gs_object_data_";
-$fecha_inicio	="2017-01-01";
-$nro_envios		="5";
+$fecha_inicio	="2017-09-20";
+$nro_envios		="100";
 $usuario_vin	=/*"siderperu";*/"Edwin 2017";
 ?>

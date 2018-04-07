@@ -14,13 +14,14 @@ function VehiculosAutorizados($link){
                                         where vin='".$usuario_vin."'
                                         group by t1.imei,t1.odometer,t1.plate_number,t1.loc_valid";
     //echo $sqlVehAut;
+    //echo '</br></br>';
     $Result = mysqli_query($link,$sqlVehAut);
     return $Result;
 }
 
 function LecturasGPS($link,$imei,$placa,$estado_registro,$odometro,$transportista){
     include('Config.php');
-    $sqlLectGPS="SELECT * FROM ".$nombre_tabla.$imei." where dt_tracker>='".$fecha_inicio."' and dt_tracker not in (select env.dt_tracker FROM gps_enviado env where env.imei=".$imei." and env.status in ('1','4')) order by dt_tracker asc limit ".$nro_envios;
+    $sqlLectGPS="SELECT * FROM ".$nombre_tabla.$imei." where dt_tracker>='".$fecha_inicio."' and dt_tracker > (select env.dt_tracker FROM gps_enviado env where env.imei=".$imei." and env.status in ('1','4')) order by dt_tracker asc limit ".$nro_envios;
     //echo $sqlLectGPS;
     //echo '</br></br>';
     $datosGPS = mysqli_query($link,$sqlLectGPS);
@@ -34,26 +35,26 @@ function LecturasGPS($link,$imei,$placa,$estado_registro,$odometro,$transportist
         );
 
         $arrayT = array();
-        
-        $a      =0;
+
+        $a=0;
 
         while ($Items = $datosGPS->fetch_object()) {
-            $dataEnviar['posicion'][$a]['patente']         =$placa;
-            $dataEnviar['posicion'][$a]['fecha_hora']      =$Items->dt_tracker;
-            $dataEnviar['posicion'][$a]['latitud']         =$Items->lat;
-            $dataEnviar['posicion'][$a]['longitud']        =$Items->lng;
-            $dataEnviar['posicion'][$a]['direccion']       =$Items->angle;
-            $dataEnviar['posicion'][$a]['velocidad']       =$Items->speed;
-            $dataEnviar['posicion'][$a]['estado_registro'] =$estado_registro;
-            $dataEnviar['posicion'][$a]['estado_ignicion'] ='1';
-            $dataEnviar['posicion'][$a]['numero_evento']   ='45';
-            $dataEnviar['posicion'][$a]['odometro']        =$odometro;
-            $dataEnviar['posicion'][$a]['transportista']   =$transportista;
-            $arrayT                                        = array_merge($arrayT,$dataEnviar);
+            $dataEnviar['posicion'][$a]['patente']=$placa;
+            $dataEnviar['posicion'][$a]['fecha_hora']=$Items->dt_tracker;
+            $dataEnviar['posicion'][$a]['latitud']=$Items->lat;
+            $dataEnviar['posicion'][$a]['longitud']=$Items->lng;
+            $dataEnviar['posicion'][$a]['direccion']=$Items->angle;
+            $dataEnviar['posicion'][$a]['velocidad']=$Items->speed;
+            $dataEnviar['posicion'][$a]['estado_registro']=$estado_registro;
+            $dataEnviar['posicion'][$a]['estado_ignicion']='1';
+            $dataEnviar['posicion'][$a]['numero_evento']='45';
+            $dataEnviar['posicion'][$a]['odometro']=$odometro;
+            $dataEnviar['posicion'][$a]['transportista']=$transportista;
+            $arrayT= array_merge($arrayT,$dataEnviar);
             $a++;
         }
 
-        //print_r($dataEnviar);
+        //echo json_encode($dataEnviar['posicion']);
 
         return $dataEnviar;
 
@@ -101,14 +102,47 @@ function InsertarEnviados($link,$imei,$fecha,$status){
     return $Result;
 }
 
+function ActualizarEnviados($link,$imei,$fecha,$status){
+    $sqlUpdate = "UPDATE gps_enviado SET dt_tracker='$fecha', `status`='$status' WHERE `imei`='$imei'";
+    //echo '</br></br>';
+    //echo $sqlUpdate;
+    $ResultUpdate = mysqli_query($link,$sqlUpdate);
+    return $ResultUpdate;
+}
+
+function VerificaExisteEnviado($link,$imei){
+    $sqlVerifica = "SELECT * FROM gps_enviado where imei='$imei'";
+    //echo '</br></br>';
+    //echo $sqlVerifica;
+    //echo '</br></br>';
+    $ResultVerifica = mysqli_query($link,$sqlVerifica);
+
+    return $ResultVerifica->num_rows;
+}
+
 $VA = VehiculosAutorizados($link);
-$b  =0;
+$b=0;
 while ($Items = $VA->fetch_object()) { 
+
+        $EstadoV = VerificaExisteEnviado($link,$Items->imei);
+
+        //echo '</br></br>';
+        //echo $EstadoV;
+        //echo '</br></br>';
+
+        if ($EstadoV == 0) {
+            echo 'NO existe este IMEI: '.$Items->imei.'... vamos a insertarlo';
+            $resp = InsertarEnviados($link,$Items->imei,$fecha_inicio,1);
+            break;
+        }
         
         $data = LecturasGPS($link,$Items->imei,$Items->plate_number,$Items->loc_valid,$Items->odometer,$Items->driver_name);
         //print_r($data);
         //echo '</br></br>';
         if ($data != null) {
+
+            $nro_control = count($data['posicion']);
+            //echo $nro_control.': ';
 
             $resp_curl = rest($data);
 
@@ -131,13 +165,31 @@ while ($Items = $VA->fetch_object()) {
                     
 
                     if (($estado_envio==1) or ($estado_envio==4)) {
-                        $resp = InsertarEnviados($link,$Items->imei,$fecha,$estado_envio);
-                        if ($resp == TRUE) {
+
+                        if ($EstadoV == 1) {
+                            
                             $d++;
-                            //echo 'enviado '.$nro_envios.' registros correctamente...';
-                        } else {
-                            echo 'fallo en la grabacion';
+                            //echo $d.'-';
+                            //echo 'vamos a actualizar';
+                            if ($nro_control == $d) {
+
+                                $resp = ActualizarEnviados($link,$Items->imei,$fecha,$estado_envio);
+
+                                if ($resp == TRUE) {
+                                    //$d++;
+                                    //echo 'actualizacion de fecha correctamente...';
+                                } else {
+                                    echo 'fallo en la grabacion';
+                                }
+                            }
+                            //$resp = ActualizarEnviados($link,$Items->imei,$fecha,$estado_envio);
                         }
+
+                        else{
+                            echo 'ERROR hay mas de 1 registro para esta placa';
+                        }
+
+                        //$resp = InsertarEnviados($link,$Items->imei,$fecha,$estado_envio);
                         
                     } else {
                         echo 'no se pudo procesar en el servidor de envio';
@@ -161,4 +213,3 @@ while ($Items = $VA->fetch_object()) {
         }
     $b++;
 }
-?>
