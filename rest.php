@@ -54,7 +54,7 @@ function LecturasGPS($link,$imei,$placa,$estado_registro,$odometro,$transportist
             $a++;
         }
 
-        //echo json_encode($dataEnviar['posicion']);
+        echo json_encode($dataEnviar['posicion']);
 
         return $dataEnviar;
 
@@ -83,9 +83,11 @@ function rest($data){
 
     // enviar el rest
     $response = curl_exec($ch);
+    print_r($response);
 
     // verificar errores
     if($response === FALSE){
+        echo 'aca';
         die(curl_error($ch));
     }
 
@@ -164,7 +166,7 @@ while ($Items = $VA->fetch_object()) {
                     }
                     
 
-                    if (($estado_envio==1) or ($estado_envio==4)) {
+                    if (($estado_envio == 1) or ($estado_envio == 4)) {
 
                         if ($EstadoV == 1) {
                             
